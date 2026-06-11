@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>자전거 출근 가계부</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Gothic+A1:wght@400;500;700;800&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#F2EAD7;
+    --paper2:#F8F2E3;
+    --card:#FFFDF5;
+    --ink:#1E2A22;
+    --green:#1F7A4D;
+    --green-d:#155C39;
+    --clay:#D9622B;
+    --clay-d:#B84C1C;
+    --muted:#8C8674;
+    --line:#E2D8BF;
+    --gold:#C99A2E;
+    --shadow:0 2px 0 rgba(30,42,34,.06), 0 10px 24px -12px rgba(30,42,34,.35);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:'Gothic A1',sans-serif;
+    background:var(--paper);
+    background-image:radial-gradient(circle at 1px 1px, rgba(30,42,34,.05) 1px, transparent 0);
+    background-size:14px 14px;
+    color:var(--ink);
+    -webkit-font-smoothing:antialiased;
+    padding:18px 16px 48px;
+    max-width:560px;margin:0 auto;
+  }
+  .num{font-family:'Bricolage Grotesque',sans-serif;font-variant-numeric:tabular-nums;}
+  .han{font-family:'Black Han Sans',sans-serif;font-weight:400;}
+
+  /* HEADER */
+  header{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:18px;padding-bottom:14px;border-bottom:2px solid var(--ink);}
+  .title{line-height:1;}
+  .title .kicker{font-family:'Bricolage Grotesque';font-weight:700;letter-spacing:.18em;font-size:10px;text-transform:uppercase;color:var(--clay-d);display:block;margin-bottom:6px;}
+  .title h1{margin:0;font-family:'Black Han Sans';font-size:27px;letter-spacing:-.5px;}
+  .today-tag{text-align:right;font-size:11px;color:var(--muted);line-height:1.5;}
+  .today-tag b{display:block;font-family:'Bricolage Grotesque';font-weight:700;font-size:15px;color:var(--ink);}
+
+  /* HERO */
+  .hero{background:var(--card);border:2px solid var(--ink);border-radius:20px;padding:20px 18px 18px;box-shadow:var(--shadow);margin-bottom:16px;position:relative;overflow:hidden;}
+  .hero .q{font-weight:800;font-size:17px;margin:0 0 4px;}
+  .hero .sub{font-size:12px;color:var(--muted);margin:0 0 16px;}
+  .choices{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .choice{border:2px solid var(--ink);border-radius:14px;padding:16px 10px;text-align:center;cursor:pointer;background:var(--paper2);transition:transform .08s ease, background .15s;user-select:none;}
+  .choice:active{transform:scale(.96);}
+  .choice .emo{font-size:30px;line-height:1;display:block;margin-bottom:7px;}
+  .choice .lbl{font-weight:800;font-size:14px;}
+  .choice .val{font-family:'Bricolage Grotesque';font-weight:700;font-size:11px;color:var(--muted);margin-top:2px;}
+  .choice.bike.on{background:var(--green);border-color:var(--green-d);color:#fff;}
+  .choice.bike.on .val{color:rgba(255,255,255,.8);}
+  .choice.car.on{background:var(--clay);border-color:var(--clay-d);color:#fff;}
+  .choice.car.on .val{color:rgba(255,255,255,.8);}
+  .hero .streakline{margin-top:14px;display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;}
+  .flame{font-size:18px;}
+  .streakline .n{font-family:'Black Han Sans';font-size:20px;color:var(--clay-d);}
+
+  /* STATS */
+  .stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;}
+  .stat{background:var(--card);border:1.5px solid var(--line);border-radius:16px;padding:14px;}
+  .stat .cap{font-size:11px;color:var(--muted);font-weight:700;letter-spacing:.02em;margin-bottom:6px;}
+  .stat .big{font-family:'Black Han Sans';font-size:26px;line-height:1;}
+  .stat .unit{font-size:13px;font-family:'Gothic A1';font-weight:800;color:var(--muted);margin-left:2px;}
+  .stat.green .big{color:var(--green-d);}
+  .stat.clay .big{color:var(--clay-d);}
+
+  /* MOTIVATION */
+  .moti{background:linear-gradient(100deg,var(--green-d),var(--green));color:#fff;border-radius:16px;padding:14px 16px;margin-bottom:16px;display:flex;align-items:center;gap:12px;box-shadow:var(--shadow);}
+  .moti .ic{font-size:24px;}
+  .moti .txt{font-size:13px;font-weight:600;line-height:1.45;}
+  .moti .txt b{font-family:'Bricolage Grotesque';font-weight:700;}
+
+  /* PREV MONTHS */
+  .section-h{display:flex;align-items:center;gap:8px;margin:22px 2px 10px;}
+  .section-h h2{margin:0;font-size:13px;font-weight:800;letter-spacing:.02em;}
+  .section-h .ln{flex:1;height:1.5px;background:var(--line);}
+  .prev{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .pcard{background:var(--paper2);border:1.5px dashed var(--line);border-radius:14px;padding:12px 14px;}
+  .pcard .m{font-family:'Black Han Sans';font-size:16px;}
+  .pcard .s{font-family:'Bricolage Grotesque';font-weight:700;font-size:17px;color:var(--green-d);margin-top:2px;}
+  .pcard .d{font-size:11px;color:var(--muted);margin-top:1px;}
+
+  /* CALENDAR */
+  .cal{background:var(--card);border:2px solid var(--ink);border-radius:20px;padding:16px 14px 18px;box-shadow:var(--shadow);}
+  .cal-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+  .cal-top .mo{font-family:'Black Han Sans';font-size:19px;}
+  .cal-top .mo small{font-family:'Bricolage Grotesque';font-weight:700;font-size:12px;color:var(--muted);margin-left:6px;}
+  .nav{width:34px;height:34px;border:1.5px solid var(--ink);background:var(--paper2);border-radius:10px;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+  .nav:active{transform:scale(.92);}
+  .dow{display:grid;grid-template-columns:repeat(7,1fr);margin-bottom:6px;}
+  .dow span{text-align:center;font-size:10px;font-weight:800;color:var(--muted);}
+  .dow span:first-child{color:var(--clay-d);}
+  .grid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;}
+  .cell{aspect-ratio:1;border-radius:11px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:'Bricolage Grotesque';font-weight:700;font-size:13px;cursor:pointer;border:1.5px solid transparent;color:var(--ink);position:relative;background:var(--paper2);transition:transform .08s;}
+  .cell.empty{background:transparent;cursor:default;}
+  .cell:not(.empty):active{transform:scale(.9);}
+  .cell.bike{background:var(--green);color:#fff;border-color:var(--green-d);}
+  .cell.car{background:var(--clay);color:#fff;border-color:var(--clay-d);}
+  .cell.today{box-shadow:0 0 0 2px var(--gold);}
+  .cell .dot{font-size:9px;line-height:1;margin-top:1px;}
+  .cal-foot{display:flex;justify-content:space-between;align-items:center;margin-top:14px;padding-top:12px;border-top:1.5px dashed var(--line);font-size:12px;}
+  .cal-foot .lg{display:flex;gap:12px;color:var(--muted);font-weight:700;}
+  .cal-foot .lg i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:middle;}
+  .cal-foot .mtot{font-weight:800;}
+  .cal-foot .mtot b{font-family:'Bricolage Grotesque';color:var(--green-d);}
+  .hint{font-size:11px;color:var(--muted);text-align:center;margin-top:10px;}
+
+  /* EXPORT */
+  .export{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px;}
+  .btn{border:2px solid var(--ink);border-radius:14px;padding:14px;font-family:'Gothic A1';font-weight:800;font-size:14px;cursor:pointer;background:var(--ink);color:var(--paper2);display:flex;align-items:center;justify-content:center;gap:8px;}
+  .btn:active{transform:scale(.97);}
+  .btn.ghost{background:var(--card);color:var(--ink);}
+  .footnote{text-align:center;font-size:11px;color:var(--muted);margin-top:18px;line-height:1.6;}
+
+  .toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;padding:11px 18px;border-radius:30px;font-size:13px;font-weight:700;opacity:0;pointer-events:none;transition:.25s;z-index:50;box-shadow:var(--shadow);}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+  .loading{text-align:center;padding:60px 0;color:var(--muted);font-weight:700;}
+</style>
+</head>
+<body>
+  <div id="app"><div class="loading">불러오는 중…</div></div>
+  <div class="toast" id="toast"></div>
+
+<script>
+const SAVE = 6000;          // 하루 절약액 (변경 요청 없으면 고정)
+const STORE_KEY = 'bike_ledger_v1';
+let state = null;
+let viewYear, viewMonth;    // 달력에서 보고 있는 연/월
+
+const KEMO = {bike:'🚲', car:'🚗'};
+function todayStr(){ const d=new Date(); return ymd(d.getFullYear(), d.getMonth()+1, d.getDate()); }
+function ymd(y,m,d){ return `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`; }
+function won(n){ return n.toLocaleString('ko-KR'); }
+
+// ---------- 저장/불러오기 ----------
+async function load(){
+  try{
+    const raw = localStorage.getItem(STORE_KEY);
+    if(raw){ state = JSON.parse(raw); return; }
+  }catch(e){ /* 없음 → 시드 */ }
+  // 최초 1회: 기존 기록 시드
+  state = {
+    streak: 36,
+    records: {
+      '2026-05-06':'bike','2026-05-07':'bike','2026-05-08':'bike','2026-05-09':'bike',
+      '2026-05-11':'bike','2026-05-13':'bike','2026-05-14':'bike','2026-05-18':'bike','2026-05-19':'bike'
+    },
+    prevMonths: [
+      {key:'2026-03', label:'3월', days:11, saving:66000},
+      {key:'2026-04', label:'4월', days:16, saving:96000}
+    ]
+  };
+  await save();
+}
+async function save(){
+  try{ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }
+  catch(e){ console.error('저장 실패', e); }
+}
+
+// ---------- 계산 ----------
+function bikeDaysIn(y,m){
+  const pre=`${y}-${String(m).padStart(2,'0')}`;
+  return Object.entries(state.records).filter(([k,v])=>k.startsWith(pre)&&v==='bike').length;
+}
+function monthSaving(y,m){ return bikeDaysIn(y,m)*SAVE; }
+function totalSaving(){
+  let recorded=0;
+  // 시드된 이전월(키 충돌 방지: records에 없는 prevMonth만 합산)
+  const recMonths = new Set(Object.keys(state.records).map(k=>k.slice(0,7)));
+  let prev=0;
+  state.prevMonths.forEach(p=>{ if(!recMonths.has(p.key)) prev+=p.saving; });
+  recorded = Object.values(state.records).filter(v=>v==='bike').length*SAVE;
+  return prev+recorded;
+}
+function moti(total){
+  if(total>=300000) return {ic:'🚴', t:`누적 <b>${won(total)}원</b> · 자전거 용품 한 벌 값을 벌었어요`};
+  if(total>=120000) return {ic:'🍽️', t:`누적 <b>${won(total)}원</b> · 가족 외식 한 번은 거뜬한 금액`};
+  if(total>=60000)  return {ic:'🍗', t:`누적 <b>${won(total)}원</b> · 치킨 ${Math.floor(total/20000)}마리 값`};
+  if(total>=30000)  return {ic:'☕', t:`누적 <b>${won(total)}원</b> · 커피 ${Math.floor(total/5000)}잔 값`};
+  return {ic:'🌱', t:`누적 <b>${won(total)}원</b> · 차곡차곡 모이는 중`};
+}
+
+// ---------- 오늘 기록 ----------
+async function logToday(method){
+  const t = todayStr();
+  const prev = state.records[t];
+  if(prev === method){           // 같은 걸 다시 누르면 취소
+    delete state.records[t];
+    if(method==='bike') state.streak = Math.max(0, state.streak-1);
+  }else{
+    state.records[t] = method;
+    if(method==='bike'){ if(prev!=='bike') state.streak += 1; }
+    else { state.streak = 0; }   // 자동차 → streak 리셋
+  }
+  await save(); render();
+  toast(prev===method ? '오늘 기록을 취소했어요' : (method==='bike'?'🚲 자전거 출근 기록!':'🚗 자동차 기록'));
+}
+
+// 달력 셀 탭: 없음 → 자전거 → 자동차 → 없음
+async function cycleDay(key){
+  const cur = state.records[key];
+  if(!cur) state.records[key]='bike';
+  else if(cur==='bike') state.records[key]='car';
+  else delete state.records[key];
+  await save(); render();
+}
+
+// ---------- 내보내기 ----------
+function buildRows(){
+  const rows = [['날짜','요일','출근방법','일일절약액(원)']];
+  const dows=['일','월','화','수','목','금','토'];
+  Object.keys(state.records).sort().forEach(k=>{
+    const v=state.records[k];
+    const d=new Date(k+'T00:00:00');
+    rows.push([k, dows[d.getDay()], v==='bike'?'자전거':'자동차', v==='bike'?SAVE:0]);
+  });
+  return rows;
+}
+function exportCSV(){
+  const rows=buildRows();
+  const csv=rows.map(r=>r.map(c=>`"${c}"`).join(',')).join('\r\n');
+  const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
+  download(blob, `자전거가계부_${todayStr()}.csv`);
+  toast('CSV 저장 완료 · 엑셀에서 바로 열려요');
+}
+function exportXLSX(){
+  if(typeof XLSX==='undefined'){ exportCSV(); return; }
+  const rows=buildRows();
+  // 요약 시트
+  const summary=[
+    ['항목','값'],
+    ['하루 절약액', SAVE],
+    ['총 자전거 출근일', Object.values(state.records).filter(v=>v==='bike').length],
+    ['현재 streak', state.streak],
+    ['누적 절약액(전체)', totalSaving()]
+  ];
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), '기록');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(summary), '요약');
+  XLSX.writeFile(wb, `자전거가계부_${todayStr()}.xlsx`);
+  toast('엑셀(xlsx) 저장 완료');
+}
+function download(blob, name){
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob); a.download=name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
+}
+
+// ---------- 렌더 ----------
+function render(){
+  const t=todayStr();
+  const tStatus=state.records[t];
+  const now=new Date();
+  const total=totalSaving();
+  const m=moti(total);
+  const allBike=Object.values(state.records).filter(v=>v==='bike').length;
+
+  const dateStr=`${now.getFullYear()}.${String(now.getMonth()+1).padStart(2,'0')}.${String(now.getDate()).padStart(2,'0')}`;
+  const dows=['일','월','화','수','목','금','토'];
+
+  let html=`
+  <header>
+    <div class="title"><span class="kicker">Bike Commute Ledger</span><h1>자전거 출근 가계부</h1></div>
+    <div class="today-tag">오늘<b>${dateStr} (${dows[now.getDay()]})</b></div>
+  </header>
+
+  <div class="hero">
+    <p class="q">오늘 어떻게 출근하셨나요?</p>
+    <p class="sub">한 번 탭하면 기록, 같은 버튼 다시 탭하면 취소</p>
+    <div class="choices">
+      <div class="choice bike ${tStatus==='bike'?'on':''}" onclick="logToday('bike')">
+        <span class="emo">🚲</span><div class="lbl">자전거</div><div class="val">+${won(SAVE)}원</div>
+      </div>
+      <div class="choice car ${tStatus==='car'?'on':''}" onclick="logToday('car')">
+        <span class="emo">🚗</span><div class="lbl">자동차</div><div class="val">+0원</div>
+      </div>
+    </div>
+    <div class="streakline"><span class="flame">🔥</span> 현재 연속 <span class="n">${state.streak}</span>일째 자전거 출근 중!</div>
+  </div>
+
+  <div class="stats">
+    <div class="stat green"><div class="cap">이번 달 자전거</div><div class="big">${bikeDaysIn(now.getFullYear(),now.getMonth()+1)}<span class="unit">일</span></div></div>
+    <div class="stat green"><div class="cap">이번 달 절약</div><div class="big">${won(monthSaving(now.getFullYear(),now.getMonth()+1))}<span class="unit">원</span></div></div>
+    <div class="stat clay"><div class="cap">최고 streak</div><div class="big">${state.streak}<span class="unit">일</span></div></div>
+    <div class="stat"><div class="cap">누적 절약(전체)</div><div class="big">${won(total)}<span class="unit">원</span></div></div>
+  </div>
+
+  <div class="moti"><span class="ic">${m.ic}</span><span class="txt">${m.t}</span></div>
+
+  <div class="section-h"><h2>지난 달 결산</h2><span class="ln"></span></div>
+  <div class="prev">
+    ${state.prevMonths.map(p=>`<div class="pcard"><div class="m">${p.label}</div><div class="s">${won(p.saving)}원</div><div class="d">자전거 ${p.days}일</div></div>`).join('')}
+  </div>
+
+  <div class="section-h"><h2>달력</h2><span class="ln"></span></div>
+  ${calendarHTML()}
+
+  <div class="export">
+    <button class="btn" onclick="exportXLSX()">📊 엑셀(xlsx)</button>
+    <button class="btn ghost" onclick="exportCSV()">📄 CSV 저장</button>
+  </div>
+  <p class="footnote">기록은 이 기기에 자동 저장됩니다 · 하루 절약 기준 ${won(SAVE)}원<br>달력 날짜를 탭하면 자전거→자동차→해제 순으로 바뀝니다</p>
+  `;
+  document.getElementById('app').innerHTML=html;
+}
+
+function calendarHTML(){
+  const y=viewYear, m=viewMonth;
+  const first=new Date(y,m-1,1).getDay();
+  const days=new Date(y,m,0).getDate();
+  const t=todayStr();
+  const dows=['일','월','화','수','목','금','토'];
+  let cells='';
+  for(let i=0;i<first;i++) cells+=`<div class="cell empty"></div>`;
+  for(let d=1;d<=days;d++){
+    const key=ymd(y,m,d);
+    const v=state.records[key];
+    const cls=['cell']; if(v) cls.push(v); if(key===t) cls.push('today');
+    cells+=`<div class="${cls.join(' ')}" onclick="cycleDay('${key}')">${d}${v?`<span class="dot">${KEMO[v]}</span>`:''}</div>`;
+  }
+  const monRec=bikeDaysIn(y,m);
+  return `
+  <div class="cal">
+    <div class="cal-top">
+      <button class="nav" onclick="moveMonth(-1)">‹</button>
+      <div class="mo">${y}.${String(m).padStart(2,'0')}<small>${monRec}일 / ${won(monRec*SAVE)}원</small></div>
+      <button class="nav" onclick="moveMonth(1)">›</button>
+    </div>
+    <div class="dow">${dows.map(d=>`<span>${d}</span>`).join('')}</div>
+    <div class="grid">${cells}</div>
+    <div class="cal-foot">
+      <div class="lg"><span><i style="background:var(--green)"></i>자전거</span><span><i style="background:var(--clay)"></i>자동차</span></div>
+      <div class="mtot">이 달 절약 <b>${won(monRec*SAVE)}원</b></div>
+    </div>
+  </div>`;
+}
+function moveMonth(delta){
+  viewMonth+=delta;
+  if(viewMonth<1){viewMonth=12;viewYear--;}
+  if(viewMonth>12){viewMonth=1;viewYear++;}
+  render();
+}
+
+let toastTimer;
+function toast(msg){
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>el.classList.remove('show'),1800);
+}
+
+// ---------- 시작 ----------
+(async function init(){
+  // SheetJS (엑셀 출력용) – 실패해도 CSV로 대체
+  const s=document.createElement('script');
+  s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+  document.head.appendChild(s);
+
+  await load();
+  const now=new Date();
+  viewYear=now.getFullYear(); viewMonth=now.getMonth()+1;
+  render();
+})();
+</script>
+</body>
+</html>
