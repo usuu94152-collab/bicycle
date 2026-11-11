@@ -15,6 +15,8 @@
     --ink:#1E2A22;
     --green:#1F7A4D;
     --green-d:#155C39;
+    --transit:#28658A;
+    --transit-d:#1D4D6B;
     --clay:#D9622B;
     --clay-d:#B84C1C;
     --muted:#8C8674;
@@ -49,8 +51,8 @@
   .hero{background:var(--card);border:2px solid var(--ink);border-radius:20px;padding:20px 18px 18px;box-shadow:var(--shadow);margin-bottom:16px;position:relative;overflow:hidden;}
   .hero .q{font-weight:800;font-size:17px;margin:0 0 4px;}
   .hero .sub{font-size:12px;color:var(--muted);margin:0 0 16px;}
-  .choices{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
-  .choice{border:2px solid var(--ink);border-radius:14px;padding:16px 10px;text-align:center;cursor:pointer;background:var(--paper2);transition:transform .08s ease, background .15s;user-select:none;}
+  .choices{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;}
+  .choice{font-family:inherit;color:inherit;width:100%;border:2px solid var(--ink);border-radius:14px;padding:16px 10px;text-align:center;cursor:pointer;background:var(--paper2);transition:transform .08s ease, background .15s;user-select:none;}
   .choice:active{transform:scale(.96);}
   .choice .emo{font-size:30px;line-height:1;display:block;margin-bottom:7px;}
   .choice .lbl{font-weight:800;font-size:14px;}
@@ -59,6 +61,12 @@
   .choice.bike.on .val{color:rgba(255,255,255,.8);}
   .choice.car.on{background:var(--clay);border-color:var(--clay-d);color:#fff;}
   .choice.car.on .val{color:rgba(255,255,255,.8);}
+  .choice.transit.on{background:var(--transit);border-color:var(--transit-d);color:#fff;}
+  .choice.transit.on .val{color:rgba(255,255,255,.85);}
+  .fare-info{font-size:12px;line-height:1.7;color:var(--muted);margin-top:14px;}
+  .fare-info input{width:82px;padding:5px;border:1px solid var(--line);border-radius:6px;font:inherit;color:var(--ink);background:var(--paper2);}
+  .fare-info p{margin:5px 0 0;}
+  .stat.transit .big{color:var(--transit-d);}
   .hero .streakline{margin-top:14px;display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;}
   .flame{font-size:18px;}
   .streakline .n{font-family:'Black Han Sans';font-size:20px;color:var(--clay-d);}
@@ -104,9 +112,10 @@
   .cell:not(.empty):active{transform:scale(.9);}
   .cell.bike{background:var(--green);color:#fff;border-color:var(--green-d);}
   .cell.car{background:var(--clay);color:#fff;border-color:var(--clay-d);}
+  .cell.transit{background:var(--transit);color:#fff;border-color:var(--transit-d);}
   .cell.today{box-shadow:0 0 0 2px var(--gold);}
   .cell .dot{font-size:9px;line-height:1;margin-top:1px;}
-  .cal-foot{display:flex;justify-content:space-between;align-items:center;margin-top:14px;padding-top:12px;border-top:1.5px dashed var(--line);font-size:12px;}
+  .cal-foot{display:flex;flex-wrap:wrap;gap:8px;justify-content:space-between;align-items:center;margin-top:14px;padding-top:12px;border-top:1.5px dashed var(--line);font-size:12px;}
   .cal-foot .lg{display:flex;gap:12px;color:var(--muted);font-weight:700;}
   .cal-foot .lg i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:middle;}
   .cal-foot .mtot{font-weight:800;}
@@ -131,11 +140,14 @@
 
 <script>
 const SAVE = 6000;          // 하루 절약액 (변경 요청 없으면 고정)
+// 사용자 지정 급행 10 왕복 4,000원 (편도 2,000원).
+const DEFAULT_TRANSIT_FARE = 2000;
 const STORE_KEY = 'bike_ledger_v1';
 let state = null;
 let viewYear, viewMonth;    // 달력에서 보고 있는 연/월
 
-const KEMO = {bike:'🚲', car:'🚗'};
+const KEMO = {bike:'🚲', car:'🚗', transit:'🚌'};
+const LABELS = {bike:'자전거', car:'자동차', transit:'대중교통(급행 10)'};
 function todayStr(){ const d=new Date(); return ymd(d.getFullYear(), d.getMonth()+1, d.getDate()); }
 function ymd(y,m,d){ return `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`; }
 function won(n){ return n.toLocaleString('ko-KR'); }
@@ -144,10 +156,18 @@ function won(n){ return n.toLocaleString('ko-KR'); }
 async function load(){
   try{
     const raw = localStorage.getItem(STORE_KEY);
-    if(raw){ state = JSON.parse(raw); return; }
+    if(raw){
+      state = JSON.parse(raw);
+      // 기존 bike_ledger_v1 기록을 그대로 사용한다.
+      state.transitFare ??= DEFAULT_TRANSIT_FARE;
+      state.transitCosts ??= {};
+      return;
+    }
   }catch(e){ /* 없음 → 시드 */ }
   // 최초 1회: 기존 기록 시드
   state = {
+    transitFare: DEFAULT_TRANSIT_FARE,
+    transitCosts: {},
     streak: 36,
     records: {
       '2026-05-06':'bike','2026-05-07':'bike','2026-05-08':'bike','2026-05-09':'bike',
@@ -170,14 +190,37 @@ function bikeDaysIn(y,m){
   const pre=`${y}-${String(m).padStart(2,'0')}`;
   return Object.entries(state.records).filter(([k,v])=>k.startsWith(pre)&&v==='bike').length;
 }
-function monthSaving(y,m){ return bikeDaysIn(y,m)*SAVE; }
+function transitCost(key){ return state.transitCosts[key] ?? DEFAULT_TRANSIT_FARE*2; }
+function savingFor(method,key){
+  return method==='bike' ? SAVE : method==='transit' ? SAVE-transitCost(key) : 0;
+}
+function monthEntries(y,m){
+  const prefix=`${y}-${String(m).padStart(2,'0')}`;
+  return Object.entries(state.records).filter(([key])=>key.startsWith(prefix));
+}
+function monthSaving(y,m){
+  return monthEntries(y,m).reduce((sum,[key,method])=>sum+savingFor(method,key),0);
+}
+function monthTransitCost(y,m){
+  return monthEntries(y,m).reduce((sum,[key,method])=>sum+(method==='transit'?transitCost(key):0),0);
+}
+function updateTransitFare(value){
+  const fare=Number(value);
+  if(String(value).trim()==='' || !Number.isInteger(fare) || fare<0 || fare>100000){
+    toast('편도 요금을 0~100,000원 사이 정수로 입력해주세요');
+    render(); return;
+  }
+  state.transitFare=fare;
+  save(); render();
+  toast('앞으로 기록할 대중교통 요금에 적용했어요');
+}
 function totalSaving(){
   let recorded=0;
   // 시드된 이전월(키 충돌 방지: records에 없는 prevMonth만 합산)
   const recMonths = new Set(Object.keys(state.records).map(k=>k.slice(0,7)));
   let prev=0;
   state.prevMonths.forEach(p=>{ if(!recMonths.has(p.key)) prev+=p.saving; });
-  recorded = Object.values(state.records).filter(v=>v==='bike').length*SAVE;
+  recorded = Object.entries(state.records).reduce((sum,[key,method])=>sum+savingFor(method,key),0);
   return prev+recorded;
 }
 function moti(total){
@@ -191,36 +234,46 @@ function moti(total){
 // ---------- 오늘 기록 ----------
 async function logToday(method){
   const t = todayStr();
+  if(!Object.hasOwn(LABELS,method)) return;
   const prev = state.records[t];
   if(prev === method){           // 같은 걸 다시 누르면 취소
     delete state.records[t];
+    delete state.transitCosts[t];
     if(method==='bike') state.streak = Math.max(0, state.streak-1);
   }else{
     state.records[t] = method;
+    delete state.transitCosts[t];
+    if(method==='transit') state.transitCosts[t]=state.transitFare*2;
     if(method==='bike'){ if(prev!=='bike') state.streak += 1; }
-    else { state.streak = 0; }   // 자동차 → streak 리셋
+    else { state.streak = 0; }   // 자동차·대중교통 → streak 리셋
   }
   await save(); render();
-  toast(prev===method ? '오늘 기록을 취소했어요' : (method==='bike'?'🚲 자전거 출근 기록!':'🚗 자동차 기록'));
+  toast(prev===method ? '오늘 기록을 취소했어요' : `${KEMO[method]} ${LABELS[method]} 기록!`);
 }
 
-// 달력 셀 탭: 없음 → 자전거 → 자동차 → 없음
+// 달력 셀 탭: 없음 → 자전거 → 자동차 → 대중교통 → 없음
 async function cycleDay(key){
   const cur = state.records[key];
   if(!cur) state.records[key]='bike';
   else if(cur==='bike') state.records[key]='car';
-  else delete state.records[key];
+  else if(cur==='car'){
+    state.records[key]='transit';
+    state.transitCosts[key]=state.transitFare*2;
+  }else{
+    delete state.records[key];
+    delete state.transitCosts[key];
+  }
   await save(); render();
 }
 
 // ---------- 내보내기 ----------
 function buildRows(){
-  const rows = [['날짜','요일','출근방법','일일절약액(원)']];
+  const rows = [['날짜','요일','출근방법','일일절약액(원)','대중교통 왕복요금(원)']];
   const dows=['일','월','화','수','목','금','토'];
   Object.keys(state.records).sort().forEach(k=>{
     const v=state.records[k];
     const d=new Date(k+'T00:00:00');
-    rows.push([k, dows[d.getDay()], v==='bike'?'자전거':'자동차', v==='bike'?SAVE:0]);
+    rows.push([k, dows[d.getDay()], LABELS[v], savingFor(v,k), v==='transit'?transitCost(k):0]);
   });
   return rows;
 }
@@ -237,7 +290,11 @@ function exportXLSX(){
   // 요약 시트
   const summary=[
     ['항목','값'],
-    ['하루 절약액', SAVE],
+    ['자전거 하루 절약액', SAVE],
+    ['대중교통 편도요금(현재 설정)', state.transitFare],
+    ['대중교통 왕복요금(현재 설정)', state.transitFare*2],
+    ['총 대중교통 출근일', Object.values(state.records).filter(v=>v==='transit').length],
+    ['대중교통 지출 합계', Object.entries(state.records).reduce((sum,[key,v])=>sum+(v==='transit'?transitCost(key):0),0)],
     ['총 자전거 출근일', Object.values(state.records).filter(v=>v==='bike').length],
     ['현재 streak', state.streak],
     ['누적 절약액(전체)', totalSaving()]
@@ -262,7 +319,7 @@ function render(){
   const now=new Date();
   const total=totalSaving();
   const m=moti(total);
-  const allBike=Object.values(state.records).filter(v=>v==='bike').length;
+  const transitDays=monthEntries(now.getFullYear(),now.getMonth()+1).filter(([,v])=>v==='transit').length;
 
   const dateStr=`${now.getFullYear()}.${String(now.getMonth()+1).padStart(2,'0')}.${String(now.getDate()).padStart(2,'0')}`;
   const dows=['일','월','화','수','목','금','토'];
@@ -277,12 +334,21 @@ function render(){
     <p class="q">오늘 어떻게 출근하셨나요?</p>
     <p class="sub">한 번 탭하면 기록, 같은 버튼 다시 탭하면 취소</p>
     <div class="choices">
-      <div class="choice bike ${tStatus==='bike'?'on':''}" onclick="logToday('bike')">
+      <button type="button" aria-pressed="${tStatus==='bike'}" class="choice bike ${tStatus==='bike'?'on':''}" onclick="logToday('bike')">
         <span class="emo">🚲</span><div class="lbl">자전거</div><div class="val">+${won(SAVE)}원</div>
-      </div>
-      <div class="choice car ${tStatus==='car'?'on':''}" onclick="logToday('car')">
+      </button>
+      <button type="button" aria-pressed="${tStatus==='car'}" class="choice car ${tStatus==='car'?'on':''}" onclick="logToday('car')">
         <span class="emo">🚗</span><div class="lbl">자동차</div><div class="val">+0원</div>
-      </div>
+      </button>
+      <button type="button" aria-pressed="${tStatus==='transit'}" class="choice transit ${tStatus==='transit'?'on':''}" onclick="logToday('transit')">
+        <span class="emo">🚌</span><div class="lbl">대중교통</div><div class="val">급행 10</div><div class="val">${won(SAVE-state.transitFare*2)}원 절약</div>
+      </button>
+    </div>
+    <div class="fare-info">
+      <label for="transit-fare">급행 10 편도 <input id="transit-fare" type="number" min="0" max="100000" step="1" value="${state.transitFare}" onchange="updateTransitFare(this.value)"> 원</label>
+      · 왕복 <b>${won(state.transitFare*2)}원</b>
+      <p>왕복 4,000원 기본 설정 · 편도 요금 수정 가능<br>변경한 요금은 새 기록부터 적용됩니다.</p>
+      ${tStatus==='transit'?`<p>오늘 기록: 왕복 ${won(transitCost(t))}원 · ${won(savingFor('transit',t))}원 절약</p>`:''}
     </div>
     <div class="streakline"><span class="flame">🔥</span> 현재 연속 <span class="n">${state.streak}</span>일째 자전거 출근 중!</div>
   </div>
@@ -290,6 +356,8 @@ function render(){
   <div class="stats">
     <div class="stat green"><div class="cap">이번 달 자전거</div><div class="big">${bikeDaysIn(now.getFullYear(),now.getMonth()+1)}<span class="unit">일</span></div></div>
     <div class="stat green"><div class="cap">이번 달 절약</div><div class="big">${won(monthSaving(now.getFullYear(),now.getMonth()+1))}<span class="unit">원</span></div></div>
+    <div class="stat transit"><div class="cap">이번 달 대중교통</div><div class="big">${transitDays}<span class="unit">일</span></div></div>
+    <div class="stat transit"><div class="cap">이번 달 대중교통 지출</div><div class="big">${won(monthTransitCost(now.getFullYear(),now.getMonth()+1))}<span class="unit">원</span></div></div>
     <div class="stat clay"><div class="cap">최고 streak</div><div class="big">${state.streak}<span class="unit">일</span></div></div>
     <div class="stat"><div class="cap">누적 절약(전체)</div><div class="big">${won(total)}<span class="unit">원</span></div></div>
   </div>
@@ -308,7 +376,7 @@ function render(){
     <button class="btn" onclick="exportXLSX()">📊 엑셀(xlsx)</button>
     <button class="btn ghost" onclick="exportCSV()">📄 CSV 저장</button>
   </div>
-  <p class="footnote">기록은 이 기기에 자동 저장됩니다 · 하루 절약 기준 ${won(SAVE)}원<br>달력 날짜를 탭하면 자전거→자동차→해제 순으로 바뀝니다</p>
+  <p class="footnote">기록은 이 기기에 자동 저장됩니다 · 자동차 출근 비용 기준 ${won(SAVE)}원<br>대중교통 절약액 = 자동차 비용 − 기록 당시 왕복요금<br>달력 날짜를 탭하면 자전거→자동차→대중교통→해제 순으로 바뀝니다</p>
   `;
   document.getElementById('app').innerHTML=html;
 }
@@ -328,18 +396,20 @@ function calendarHTML(){
     cells+=`<div class="${cls.join(' ')}" onclick="cycleDay('${key}')">${d}${v?`<span class="dot">${KEMO[v]}</span>`:''}</div>`;
   }
   const monRec=bikeDaysIn(y,m);
+  const transitDays=monthEntries(y,m).filter(([,v])=>v==='transit').length;
+  const savings=monthSaving(y,m);
   return `
   <div class="cal">
     <div class="cal-top">
       <button class="nav" onclick="moveMonth(-1)">‹</button>
-      <div class="mo">${y}.${String(m).padStart(2,'0')}<small>${monRec}일 / ${won(monRec*SAVE)}원</small></div>
+      <div class="mo">${y}.${String(m).padStart(2,'0')}<small>🚲 ${monRec}일 · 🚌 ${transitDays}일</small></div>
       <button class="nav" onclick="moveMonth(1)">›</button>
     </div>
     <div class="dow">${dows.map(d=>`<span>${d}</span>`).join('')}</div>
     <div class="grid">${cells}</div>
     <div class="cal-foot">
-      <div class="lg"><span><i style="background:var(--green)"></i>자전거</span><span><i style="background:var(--clay)"></i>자동차</span></div>
-      <div class="mtot">이 달 절약 <b>${won(monRec*SAVE)}원</b></div>
+      <div class="lg"><span><i style="background:var(--green)"></i>자전거</span><span><i style="background:var(--clay)"></i>자동차</span><span><i style="background:var(--transit)"></i>대중교통</span></div>
+      <div class="mtot">이 달 절약 <b>${won(savings)}원</b></div>
     </div>
   </div>`;
 }
